@@ -6,6 +6,8 @@ using System.Diagnostics;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+// AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
+
 builder.Services.AddCadenceInfrastructure();
 builder.Services.AddSingleton<RuleEngine>();
 builder.Services.AddHostedService<RuleEngineWorker>();

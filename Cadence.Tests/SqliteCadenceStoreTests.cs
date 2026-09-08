@@ -116,5 +116,83 @@ namespace Cadence.Tests
             Assert.Equal(firedAt, reloaded.FiredAt);
             Assert.False(reloaded.Acknowledged);
         }
+
+        [Fact]
+        public async Task ModifyTaskAsync_UpdatesTitleOnly()
+        {
+            var saved = await _store.AddTaskAsync(Task("Art"));
+
+            var result = await _store.ModifyTaskAsync(saved.Id, newTitle: "Updated Title");
+
+            Assert.True(result);
+            var reloaded = await _store.GetTasksByContainerLabelAsync("Art");
+            Assert.Equal("Updated Title", reloaded[0].Title);
+            Assert.Equal(TaskPriority.Normal, reloaded[0].Priority);
+        }
+
+        [Fact]
+        public async Task ModifyTaskAsync_UpdatesPriorityOnly()
+        {
+            var saved = await _store.AddTaskAsync(Task("Art"));
+
+            var result = await _store.ModifyTaskAsync(saved.Id, newPriority: TaskPriority.High);
+
+            Assert.True(result);
+            var reloaded = await _store.GetTasksByContainerLabelAsync("Art");
+            Assert.Equal(TaskPriority.High, reloaded[0].Priority);
+            Assert.Equal("Task", reloaded[0].Title);
+        }
+
+        [Fact]
+        public async Task ModifyTaskAsync_UpdatesBothTitleAndPriority()
+        {
+            var saved = await _store.AddTaskAsync(Task("Art"));
+
+            var result = await _store.ModifyTaskAsync(saved.Id, newTitle: "New Title", newPriority: TaskPriority.Low);
+
+            Assert.True(result);
+            var reloaded = await _store.GetTasksByContainerLabelAsync("Art");
+            Assert.Equal("New Title", reloaded[0].Title);
+            Assert.Equal(TaskPriority.Low, reloaded[0].Priority);
+        }
+
+        [Fact]
+        public async Task ModifyTaskAsync_ReturnsFalseForNonexistentTask()
+        {
+            var result = await _store.ModifyTaskAsync(999, newTitle: "Nope");
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task DeleteTaskAsync_RemovesTask()
+        {
+            var saved = await _store.AddTaskAsync(Task("Art"));
+
+            var result = await _store.DeleteTaskAsync(saved.Id);
+
+            Assert.True(result);
+            var remaining = await _store.GetTasksByContainerLabelAsync("Art");
+            Assert.Empty(remaining);
+        }
+
+        [Fact]
+        public async Task DeleteTaskAsync_ReturnsFalseForNonexistentTask()
+        {
+            var result = await _store.DeleteTaskAsync(999);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public async Task DeleteTaskAsync_OnlyRemovesSpecifiedTask()
+        {
+            var task1 = await _store.AddTaskAsync(Task("Art"));
+            var task2 = await _store.AddTaskAsync(Task("Art"));
+
+            await _store.DeleteTaskAsync(task1.Id);
+
+            var remaining = await _store.GetTasksByContainerLabelAsync("Art");
+            Assert.Single(remaining);
+            Assert.Equal(task2.Id, remaining[0].Id);
+        }
     }
 }

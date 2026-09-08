@@ -246,16 +246,29 @@ namespace Cadence.Tests
                 }
                 return Task.FromResult(false);
             }
-            public Task<bool> ModifyTaskAsync(int id, string newTitle, CancellationToken ct = default)
+            public Task<bool> ModifyTaskAsync(int id, string? newTitle = null, TaskPriority? newPriority = null, CancellationToken ct = default)
             {
                 foreach (var tasks in Tasks.Values)
                 {
                     var task = tasks.FirstOrDefault(t => t.Id == id);
                     if (task is not null)
                     {
-                        task.Title = newTitle;
+                        if (newTitle is not null)
+                            task.Title = newTitle;
+                        if (newPriority is not null)
+                            task.Priority = newPriority.Value;
                         return Task.FromResult(true);
                     }
+                }
+                return Task.FromResult(false);
+            }
+            public Task<bool> DeleteTaskAsync(int id, CancellationToken ct = default)
+            {
+                foreach (var tasks in Tasks.Values)
+                {
+                    var removed = tasks.RemoveAll(t => t.Id == id);
+                    if (removed > 0)
+                        return Task.FromResult(true);
                 }
                 return Task.FromResult(false);
             }

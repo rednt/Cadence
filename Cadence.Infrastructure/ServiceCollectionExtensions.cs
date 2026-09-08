@@ -29,9 +29,10 @@ namespace Cadence.Infrastructure
                 var blocks = loader.Load(path);
                 return new RoutineClock(blocks);
             });
-            services.AddSingleton<INotificationSender, ConsoleNotificationSender>();
+            services.AddSingleton<ConsoleNotificationSender>();
             services.AddSingleton<IClock>(sp => new SystemClock());
-
+            services.AddSingleton<INotificationSender, WindowsToastNotificationSender>();
+            
             return services;
         }
         public static string GetCadenceDbDirectory()
