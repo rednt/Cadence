@@ -32,7 +32,7 @@ namespace Cadence.Infrastructure
             services.AddSingleton<ConsoleNotificationSender>();
             services.AddSingleton<IClock>(sp => new SystemClock());
             services.AddSingleton<INotificationSender, WindowsToastNotificationSender>();
-            
+
             return services;
         }
         public static string GetCadenceDbDirectory()

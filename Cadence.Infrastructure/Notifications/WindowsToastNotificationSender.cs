@@ -32,7 +32,8 @@ namespace Cadence.Infrastructure.Notifications
         }
         public Task SendAsync(NotificationType notificationType, string message, CancellationToken cancellationToken = default)
         {
-            if (!_registered){
+            if (!_registered)
+            {
                 return Task.CompletedTask;
             }
             try
@@ -76,8 +77,8 @@ namespace Cadence.Infrastructure.Notifications
             }
             _disposed = true;
         }
-        
-            
-        
+
+
+
     }
 }

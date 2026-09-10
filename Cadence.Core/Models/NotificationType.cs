@@ -4,7 +4,6 @@ namespace Cadence.Core.Models
     {
         BlockTransition,
         TaskSurfaced,
-        IdleCheckIn,
         CycleRoll
     }
 }
