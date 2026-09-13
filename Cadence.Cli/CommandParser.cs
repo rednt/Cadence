@@ -3,6 +3,7 @@ using Cadence.Core.Models;
 using Cadence.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
+using System.Text;
 using TaskStatusModel = Cadence.Core.Models.TaskStatus;
 
 namespace Cadence.Cli
@@ -48,7 +49,9 @@ namespace Cadence.Cli
             var command = args[0].ToLower();
             switch (command)
             {
-                case "status":
+                case "help":
+                    PrintHelp();
+                    break;                case "status":
                     await StatusAsync(services);
                     break;
                 case "add":
@@ -80,6 +83,53 @@ namespace Cadence.Cli
                     PrintHelp();
                     break;
             }
+        }
+
+        /// <summary>
+        /// Interactive prompt used when the CLI is launched with no args
+        /// (e.g. double-clicked). Delegates every command to <see cref="RunAsync"/>,
+        /// so one-shot and REPL behavior stay identical.
+        /// </summary>
+        public static async Task RunInteractiveAsync(IServiceProvider services)
+        {
+            Console.WriteLine("Cadence CLI — Daily Routine Manager (type 'help' for commands, 'exit' to quit)");
+            while (true)
+            {
+                Console.Write("cadence> ");
+                var line = Console.ReadLine();
+                if (line is null) return; // EOF (piped input closed)
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                var tokens = SplitCommandLine(line);
+                if (tokens.Length == 0) continue;
+                var command = tokens[0].ToLower();
+                if (command is "exit" or "quit") return;
+                if (command is "clear" or "cls") { Console.Clear(); continue; }
+                await RunAsync(tokens, services);
+            }
+        }
+
+        /// <summary>
+        /// Splits a REPL line the way the OS shell splits one-shot args:
+        /// whitespace-separated, double-quoted segments kept as single tokens.
+        /// No escaped-quote support.
+        /// </summary>
+        private static string[] SplitCommandLine(string input)
+        {
+            var tokens = new List<string>();
+            var current = new StringBuilder();
+            var inQuotes = false;
+            foreach (var c in input)
+            {
+                if (c == '"') { inQuotes = !inQuotes; continue; }
+                if (char.IsWhiteSpace(c) && !inQuotes)
+                {
+                    if (current.Length > 0) { tokens.Add(current.ToString()); current.Clear(); }
+                    continue;
+                }
+                current.Append(c);
+            }
+            if (current.Length > 0) tokens.Add(current.ToString());
+            return tokens.ToArray();
         }
         private static async Task StatusAsync(IServiceProvider services)
         {
@@ -333,10 +383,39 @@ namespace Cadence.Cli
         }
         private static void StartWorker(IServiceProvider services)
         {
+            var pidPath = CadencePaths.GetPidPath();
+            if (File.Exists(pidPath) && int.TryParse(File.ReadAllText(pidPath), out var existingPid))
+            {
+                try
+                {
+                    Process.GetProcessById(existingPid);
+                    Console.WriteLine($"Worker is already running (PID {existingPid}).");
+                    return;
+                }
+                catch (ArgumentException)
+                {
+                    File.Delete(pidPath); // Stale PID from a hard kill.
+                }
+            }
+
+            var workerExe = FindWorkerExe();
+            if (workerExe is not null)
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = workerExe,
+                    UseShellExecute = true,
+                    WorkingDirectory = Path.GetDirectoryName(workerExe)
+                });
+                Console.WriteLine("Worker process started.");
+                return;
+            }
+
+            // Dev fallback: published .exe not present, run from source.
             var workerProjectPath = FindWorkerProject();
             if (workerProjectPath is null)
             {
-                Console.WriteLine("Worker project not found.");
+                Console.WriteLine("Worker .exe not found next to the CLI. Publish both projects to the same folder.");
                 return;
             }
 
@@ -358,7 +437,7 @@ namespace Cadence.Cli
 
         private static void StopWorker(IServiceProvider services)
         {
-            var pidPath = Path.Combine(ServiceCollectionExtensions.GetCadenceDbDirectory(), "worker.pid");
+            var pidPath = CadencePaths.GetPidPath();
             if (!File.Exists(pidPath))
             {
                 Console.WriteLine("Worker is not running (no PID file).");
@@ -388,6 +467,19 @@ namespace Cadence.Cli
                 if (File.Exists(pidPath))
                     File.Delete(pidPath);
             }
+        }
+
+        /// <summary>
+        /// Published layout: Cadence.Worker.exe sits next to the CLI .exe.
+        /// Returns null when running from source (use the dev fallback instead).
+        /// </summary>
+        private static string? FindWorkerExe()
+        {
+            var baseDir = AppContext.BaseDirectory;
+            var sibling = Path.Combine(baseDir, "Cadence.Worker.exe");
+            if (File.Exists(sibling)) return sibling;
+            var nested = Path.Combine(baseDir, "Worker", "Cadence.Worker.exe");
+            return File.Exists(nested) ? nested : null;
         }
 
         private static string? FindWorkerProject()
@@ -433,7 +525,7 @@ namespace Cadence.Cli
                 foreach (var task in tasks)
                     Console.WriteLine($"  [{task.Id}] {task.Title}");
                 Console.WriteLine();
-                Console.WriteLine("Usage: complete [Id]");
+                Console.WriteLine("Usage: delete [Id]");
                 return;
             }
 

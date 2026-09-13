@@ -18,7 +18,7 @@ using (var scope = host.Services.CreateScope())
     dbContext.Database.EnsureCreated();
 }
 
-var pidPath = Path.Combine(ServiceCollectionExtensions.GetCadenceDbDirectory(), "worker.pid");
+var pidPath = CadencePaths.GetPidPath();
 Directory.CreateDirectory(Path.GetDirectoryName(pidPath)!);
 File.WriteAllText(pidPath, Process.GetCurrentProcess().Id.ToString());
 

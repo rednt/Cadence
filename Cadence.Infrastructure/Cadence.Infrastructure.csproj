@@ -9,9 +9,7 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.*" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Routines\default.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="Routines\default.json" />
   </ItemGroup>
 
   <PropertyGroup>

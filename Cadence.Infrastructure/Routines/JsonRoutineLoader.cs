@@ -47,6 +47,59 @@ namespace Cadence.Infrastructure.Routines
         }
         public IReadOnlyList<Block> Load(string path) => Parse(File.ReadAllText(path));
 
+        /// <summary>
+        /// Resolve order: user-editable %LOCALAPPDATA%\Cadence\routine.json first,
+        /// embedded default second, loose file next to the .exe last (dev/manual drop).
+        /// Seeds the user copy from the embedded default on first run (best-effort).
+        /// Restart the worker after editing the routine — no hot-reload in v1.
+        /// </summary>
+        public IReadOnlyList<Block> LoadDefault()
+        {
+            var userPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Cadence", "routine.json");
+            if (File.Exists(userPath))
+                return Load(userPath);
+
+            var embedded = GetEmbeddedJson();
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(userPath)!);
+                File.WriteAllText(userPath, embedded);
+            }
+            catch
+            {
+                // Seeding is a convenience; embedded content still loads below.
+            }
+            try
+            {
+                return Parse(embedded);
+            }
+            catch (Exception ex) when (ex is not InvalidOperationException)
+            {
+                throw new InvalidOperationException("Embedded default routine is invalid.", ex);
+            }
+        }
+
+        private static string GetEmbeddedJson()
+        {
+            var assembly = typeof(JsonRoutineLoader).Assembly;
+            var name = assembly.GetManifestResourceNames()
+                .FirstOrDefault(n => n.EndsWith("default.json", StringComparison.OrdinalIgnoreCase));
+            if (name is not null)
+            {
+                using var stream = assembly.GetManifestResourceStream(name)!;
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd();
+            }
+            // Dev fallback: loose file next to the .exe (pre-publish layout).
+            var loose = Path.Combine(AppContext.BaseDirectory, "Routines", "default.json");
+            if (File.Exists(loose))
+                return File.ReadAllText(loose);
+            throw new InvalidOperationException(
+                "Default routine not found (no embedded resource, no Routines/default.json next to the .exe).");
+        }
+
     }
 
 }

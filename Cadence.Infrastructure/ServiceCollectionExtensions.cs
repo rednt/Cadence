@@ -14,7 +14,8 @@ namespace Cadence.Infrastructure
         {
             services.AddSingleton<CadenceDbContext>(sp =>
             {
-                var dbPath = Path.Combine(GetCadenceDbDirectory(), "cadence.db");
+                CadencePaths.EnsureDatabaseMigrated();
+                var dbPath = CadencePaths.GetDbPath();
                 Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
                 var options = new DbContextOptionsBuilder<CadenceDbContext>()
                     .UseSqlite($"Data Source={dbPath}")
@@ -24,9 +25,7 @@ namespace Cadence.Infrastructure
             services.AddSingleton<ICadenceStore, SqliteCadenceStore>();
             services.AddSingleton<IRoutineSource>(sp =>
             {
-                var loader = new JsonRoutineLoader();
-                var path = Path.Combine(AppContext.BaseDirectory, "Routines", "default.json");
-                var blocks = loader.Load(path);
+                var blocks = new JsonRoutineLoader().LoadDefault();
                 return new RoutineClock(blocks);
             });
             services.AddSingleton<ConsoleNotificationSender>();
@@ -35,17 +34,7 @@ namespace Cadence.Infrastructure
 
             return services;
         }
-        public static string GetCadenceDbDirectory()
-        {
-            var dir = new DirectoryInfo(AppContext.BaseDirectory);
-            for (int i = 0; i < 10; i++)
-            {
-                if (dir is null) break;
-                if (File.Exists(Path.Combine(dir.FullName, "Cadence.sln")))
-                    return Path.Combine(dir.FullName, "CadenceDB");
-                dir = dir.Parent;
-            }
-            return Path.Combine(AppContext.BaseDirectory, "CadenceDB");
-        }
+        [Obsolete("Use CadencePaths.GetDataDirectory() instead. Kept for compatibility.")]
+        public static string GetCadenceDbDirectory() => CadencePaths.GetDataDirectory();
     }
 }

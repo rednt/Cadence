@@ -16,4 +16,7 @@ using (var scope = host.Services.CreateScope())
     dbContext.Database.EnsureCreated();
 }
 
-await CommandParser.RunAsync(args, host.Services);
+if (args.Length == 0)
+    await CommandParser.RunInteractiveAsync(host.Services);
+else
+    await CommandParser.RunAsync(args, host.Services);
