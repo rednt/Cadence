@@ -86,13 +86,13 @@ Core targets `net8.0`. Worker, Cli, Infrastructure, and Tests target `net8.0-win
 
 `JsonRoutineLoader` reads JSON with `{ "profile": "...", "blocks": [...] }`. Block times use 24-hour `HH:mm` format. Enum values are camelCase strings (e.g., `"wake"`, `"sleep"`).
 
-Source file is `Cadence.Infrastructure/Routines/default.json` (embedded resource). At runtime `LoadDefault()` prefers `%LOCALAPPDATA%\Cadence\routine.json` (seeded from embedded on first run, editable without rebuild), then embedded, then a loose `Routines/default.json` next to the .exe. Restart the worker after editing — no hot-reload.
+Source file is `Cadence.Infrastructure/Routines/default.json` (embedded resource). At runtime `LoadDefault()` prefers `%LOCALAPPDATA%\Cadence\routine.json` (seeded from embedded on first run, editable without rebuild), then embedded, then a loose `Routines/default.json` next to the .exe. Hot-reload via `FileSystemWatcher` is v0.2 scope.
 
 ## Config vs State Separation
 
 - **`Cadence.Infrastructure/Routines/default.json`** is Configuration as Code — edited in VS Code, version-controlled, defines the block schedule (times, labels, roles). Never edited by the CLI at runtime.
 - **`%LOCALAPPDATA%\Cadence\cadence.db`** is mutable runtime state — tasks, notification logs, **heartbeats**. The CLI writes here only.
-- **CLI never touches config in v1.** Hot-reload (`IOptionsMonitor` / `FileSystemWatcher`) is deferred to a future version.
+- **CLI never touches config at runtime.** Routine edits go to `%LOCALAPPDATA%\Cadence\routine.json`; hot-reload picks them up (v0.2).
 
 ## CLI Command Surface
 
@@ -143,4 +143,24 @@ First run auto-copies the legacy solution-root `CadenceDB/cadence.db` if present
 
 ## Naming
 
-The repo directory is `Cadence-Working-name-` (with trailing hyphen). The solution and namespaces use `Cadence` without the suffix.
+The repo directory is `Cadence`. The solution and namespaces use `Cadence` without the suffix.
+
+## Roadmap (agent context — keep current when implementing)
+
+### v0.2 (next)
+- Spectre.Console in `Cadence.Cli` (tables, styled output, interactive prompts). Core stays zero-dep.
+- Hot-reload routine via `FileSystemWatcher` in worker. `IRoutineSource` gains reload. No restart needed.
+- Routine editing CLI: `cadence routine` (view), `routine move` (change time), `routine reorder` (interactive). Writes `routine.json`.
+- CI: `.github/workflows/ci.yml` (build + test on push).
+- Add `JsonRoutineLoader` tests (currently 0 — safety net for hot-reload).
+
+### v0.3 (candidate)
+- Working hours / buffer / quiet hours config.
+- Idle-gap check-in rule (RuleEngine fires when no task for N minutes).
+
+### v1.0 — first packaged release with UI
+- GUI: Blazor or Tauri (leaning Tauri). Tray icon + global hotkey. Block drag-and-drop editor. Installer.
+
+### Backlog (v1.x+)
+- ntfy.sh mobile push (HTTP POST → phone push when PC is on).
+- `.ics` calendar import.
