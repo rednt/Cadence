@@ -6,10 +6,14 @@ namespace Cadence.Core.Interfaces
     public interface ICadenceStore
     {
         Task<TaskItem> AddTaskAsync(TaskItem task, CancellationToken ct = default);
+        Task<IReadOnlyList<TaskItem>> GetTasksByAreaIdAsync(int areaId, TaskStatus? status = null, CancellationToken ct = default);
+        // Compatibility method for v0.1 block system (preserved but inactive)
         Task<IReadOnlyList<TaskItem>> GetTasksByContainerLabelAsync(string containerLabel, TaskStatus? status = null, CancellationToken ct = default);
         Task LogNotificationAsync(NotificationLog log, CancellationToken ct = default);
         Task<bool> CompleteTaskAsync(int id, CancellationToken ct = default);
         Task<bool> ModifyTaskAsync(int id, string? newTitle = null, TaskPriority? newPriority = null, CancellationToken ct = default);
+        Task<IReadOnlyList<ContainerTaskCount>> GetAreaTaskCountsAsync(CancellationToken ct = default);
+        // Compatibility method for v0.1 block system
         Task<IReadOnlyList<ContainerTaskCount>> GetContainerTaskCountsAsync(CancellationToken ct = default);
         Task RecordHeartbeatAsync(DateTimeOffset timestamp, CancellationToken ct = default);
         Task<DateTimeOffset?> GetLastHeartbeatAsync(CancellationToken ct = default);

@@ -126,8 +126,8 @@ namespace Cadence.Tests
 
             store.Tasks["Art"] = new List<TaskItem>
             {
-                new() { Id = 1, Title = "Sketch layout", ContainerLabel = "Art", Status = TaskStatus.Pending },
-                new() { Id = 2, Title = "Ink outlines", ContainerLabel = "Art", Status = TaskStatus.Pending },
+                new() { Id = 1, Title = "Sketch layout", BlockLabel = "Art", Status = TaskStatus.Pending },
+                new() { Id = 2, Title = "Ink outlines", BlockLabel = "Art", Status = TaskStatus.Pending },
             };
 
             routine.Current = CurrentAt(ArtBlock);
@@ -174,7 +174,7 @@ namespace Cadence.Tests
 
             store.Tasks["Art"] = new List<TaskItem>
             {
-                new() { Id = 1, Title = "Paint", ContainerLabel = "Art", Status = TaskStatus.Pending },
+                new() { Id = 1, Title = "Paint", BlockLabel = "Art", Status = TaskStatus.Pending },
             };
 
             routine.Current = CurrentAt(ArtBlock, cycleId: 2); // block change + cycle roll
@@ -202,16 +202,16 @@ namespace Cadence.Tests
             public CurrentBlock GetCurrentBlock(DateTimeOffset now) => Current;
         }
 
-        private sealed class MockCadenceStore : ICadenceStore
+private sealed class MockCadenceStore : ICadenceStore
         {
             public Dictionary<string, List<TaskItem>> Tasks { get; } = new();
             public List<NotificationLog> Logs { get; } = new();
 
             public Task<TaskItem> AddTaskAsync(TaskItem task, CancellationToken ct = default)
             {
-                if (!Tasks.ContainsKey(task.ContainerLabel))
-                    Tasks[task.ContainerLabel] = new List<TaskItem>();
-                Tasks[task.ContainerLabel].Add(task);
+                if (!Tasks.ContainsKey(task.BlockLabel))
+                    Tasks[task.BlockLabel] = new List<TaskItem>();
+                Tasks[task.BlockLabel].Add(task);
                 return Task.FromResult(task);
             }
 
@@ -227,6 +227,9 @@ namespace Cadence.Tests
 
                 return Task.FromResult<IReadOnlyList<TaskItem>>(filtered);
             }
+
+            public Task<IReadOnlyList<TaskItem>> GetTasksByAreaIdAsync(int areaId, TaskStatus? status = null, CancellationToken ct = default)
+                => Task.FromResult<IReadOnlyList<TaskItem>>(Array.Empty<TaskItem>());
 
             public Task LogNotificationAsync(NotificationLog log, CancellationToken ct = default)
             {
@@ -271,6 +274,10 @@ namespace Cadence.Tests
                         return Task.FromResult(true);
                 }
                 return Task.FromResult(false);
+            }
+            public Task<IReadOnlyList<ContainerTaskCount>> GetAreaTaskCountsAsync(CancellationToken ct = default)
+            {
+                return Task.FromResult<IReadOnlyList<ContainerTaskCount>>(Array.Empty<ContainerTaskCount>());
             }
             public Task<IReadOnlyList<ContainerTaskCount>> GetContainerTaskCountsAsync(CancellationToken ct = default)
             {

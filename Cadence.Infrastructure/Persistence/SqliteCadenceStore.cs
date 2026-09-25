@@ -20,10 +20,19 @@ namespace Cadence.Infrastructure.Persistence
             return task;
         }
 
+        public async Task<IReadOnlyList<TaskItem>> GetTasksByAreaIdAsync(int areaId, TaskStatus? status = null, CancellationToken ct = default)
+        {
+            return await _db.Tasks
+                .Where(t => t.AreaId == areaId && (status == null || t.Status == status))
+                .OrderByDescending(t => t.Priority)
+                .ThenBy(t => t.Id)
+                .ToListAsync(ct);
+        }
+
         public async Task<IReadOnlyList<TaskItem>> GetTasksByContainerLabelAsync(string containerLabel, TaskStatus? status = null, CancellationToken ct = default)
         {
             return await _db.Tasks
-                .Where(t => t.ContainerLabel == containerLabel && (status == null || t.Status == status))
+                .Where(t => t.BlockLabel == containerLabel && (status == null || t.Status == status))
                 .OrderByDescending(t => t.Priority)
                 .ThenBy(t => t.Id)
                 .ToListAsync(ct);
@@ -66,10 +75,22 @@ namespace Cadence.Infrastructure.Persistence
             return true;
         }
 
+        public async Task<IReadOnlyList<ContainerTaskCount>> GetAreaTaskCountsAsync(CancellationToken ct = default)
+        {
+            return await _db.Tasks
+                .GroupBy(t => t.AreaId)
+                .Select(g => new ContainerTaskCount
+                {
+                    ContainerLabel = g.Key.ToString(),
+                    PendingCount = g.Count(t => t.Status == TaskStatus.Pending)
+                })
+                .ToListAsync(ct);
+        }
+
         public async Task<IReadOnlyList<ContainerTaskCount>> GetContainerTaskCountsAsync(CancellationToken ct = default)
         {
             return await _db.Tasks
-                .GroupBy(t => t.ContainerLabel)
+                .GroupBy(t => t.BlockLabel ?? string.Empty)
                 .Select(g => new ContainerTaskCount
                 {
                     ContainerLabel = g.Key,

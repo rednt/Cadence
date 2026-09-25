@@ -86,13 +86,14 @@ Core targets `net8.0`. Worker, Cli, Infrastructure, and Tests target `net8.0-win
 
 `JsonRoutineLoader` reads JSON with `{ "profile": "...", "blocks": [...] }`. Block times use 24-hour `HH:mm` format. Enum values are camelCase strings (e.g., `"wake"`, `"sleep"`).
 
-Source file is `Cadence.Infrastructure/Routines/default.json` (embedded resource). At runtime `LoadDefault()` prefers `%LOCALAPPDATA%\Cadence\routine.json` (seeded from embedded on first run, editable without rebuild), then embedded, then a loose `Routines/default.json` next to the .exe. Hot-reload via `FileSystemWatcher` is v0.2 scope.
+Source file is `Cadence.Infrastructure/Routines/default.json` (embedded resource). At runtime `LoadDefault()` prefers `%LOCALAPPDATA%\Cadence\routine.json` (seeded from embedded on first run, editable without rebuild), then embedded, then a loose `Routines/default.json` next to the .exe. **Preserved but inactive in v0.2.x** — v0.2.x uses `cycles.json` + `areas.json` for the new cycle system. v0.3 will redesign parallel block system with `timetable.json`.
 
 ## Config vs State Separation
 
-- **`Cadence.Infrastructure/Routines/default.json`** is Configuration as Code — edited in VS Code, version-controlled, defines the block schedule (times, labels, roles). Never edited by the CLI at runtime.
+- **`Cadence.Infrastructure/Routines/default.json`** is Configuration as Code — edited in VS Code, version-controlled, defines the block schedule (times, labels, roles). **Preserved but inactive in v0.2.x**.
+- **`%LOCALAPPDATA%\Cadence\cycles.json` + `areas.json`** — v0.2.x cycle system config (themes, areas, hot-reload).
 - **`%LOCALAPPDATA%\Cadence\cadence.db`** is mutable runtime state — tasks, notification logs, **heartbeats**. The CLI writes here only.
-- **CLI never touches config at runtime.** Routine edits go to `%LOCALAPPDATA%\Cadence\routine.json`; hot-reload picks them up (v0.2).
+- **CLI never touches config at runtime.** Routine edits go to `%LOCALAPPDATA%\Cadence\routine.json`; cycle edits go to `cycles.json` + `areas.json`; hot-reload picks them up (v0.2).
 
 ## CLI Command Surface
 
@@ -147,20 +148,28 @@ The repo directory is `Cadence`. The solution and namespaces use `Cadence` witho
 
 ## Roadmap (agent context — keep current when implementing)
 
-### v0.2 (next)
+### v0.2.x (next — Cycle + Area Foundation)
 - Spectre.Console in `Cadence.Cli` (tables, styled output, interactive prompts). Core stays zero-dep.
-- Hot-reload routine via `FileSystemWatcher` in worker. `IRoutineSource` gains reload. No restart needed.
-- Routine editing CLI: `cadence routine` (view), `routine move` (change time), `routine reorder` (interactive). Writes `routine.json`.
-- CI: `.github/workflows/ci.yml` (build + test on push).
-- Add `JsonRoutineLoader` tests (currently 0 — safety net for hot-reload).
+- `ICycleSource` + `CycleStore` replace `IRoutineSource` + routine loader.
+- `CycleEngine` replaces `RuleEngine` — ticks only during active cycle.
+- Spectre.Console CLI: `cycle start/end/pause/resume/status/rename`, `area list/create/archive`, `task add/complete/delete` (area-scoped), `routine` (themes + areas).
+- Hot-reload: `FileSystemWatcher` on `cycles.json` + `areas.json`.
+- CI: `.github/workflows/ci.yml`. Demo GIF.
 
-### v0.3 (candidate)
-- Working hours / buffer / quiet hours config.
-- Idle-gap check-in rule (RuleEngine fires when no task for N minutes).
+### v0.3 (candidate — Guardrails + Block System Design)
+- Pomodoro timer / half-cycle prompt (optional, in-cycle).
+- Idle-gap nudge (configurable threshold, default 60min, Snooze/Dismiss).
+- Cycle attendance heatmap, weekly review CLI (`cadence review`).
+- **Block system redesign** — parallel timetable system (fixed blocks: Sleep, Meds, Appointments) alongside cycles. Unified notification queue. Separate config (`timetable.json`), CLI (`cadence block ...`), task scope. Decision: v0.4 impl or v1.0 merge.
 
 ### v1.0 — first packaged release with UI
-- GUI: Blazor or Tauri (leaning Tauri). Tray icon + global hotkey. Block drag-and-drop editor. Installer.
+- GUI: Blazor or Tauri (leaning Tauri). Tray icon + global hotkey.
+- Cycle + Area visual editor (drag-and-drop themes, assign areas, manage areas).
+- Live cycle view (timer, areas, tasks, progress).
+- Installer.
 
 ### Backlog (v1.x+)
 - ntfy.sh mobile push (HTTP POST → phone push when PC is on).
+- Weekly review dashboard (heatmap, completion rates, actual vs target).
 - `.ics` calendar import.
+- Cloud sync (`cadence.db` + `cycles.json` + `areas.json`).

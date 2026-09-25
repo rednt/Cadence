@@ -205,12 +205,12 @@ namespace Cadence.Cli
             var task = new TaskItem
             {
                 Title = title,
-                ContainerLabel = container,
+                BlockLabel = container,
                 Status = TaskStatusModel.Pending,
                 Priority = priority
             };
             var addedTask = await store.AddTaskAsync(task);
-            Console.WriteLine($"Added task [{addedTask.Id}] \"{addedTask.Title}\" to container \"{addedTask.ContainerLabel}\".");
+            Console.WriteLine($"Added task [{addedTask.Id}] \"{addedTask.Title}\" to container \"{addedTask.BlockLabel}\".");
         }
 
         private static async Task CompleteAsync(string[] args, IServiceProvider services)

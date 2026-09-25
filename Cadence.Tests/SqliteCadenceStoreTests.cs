@@ -30,8 +30,8 @@ namespace Cadence.Tests
             _connection.Dispose();
         }
 
-        private static TaskItem Task(string container, TaskStatus status = TaskStatus.Pending, TaskPriority priority = TaskPriority.Normal)
-            => new() { Title = "Task", ContainerLabel = container, Status = status, Priority = priority };
+        private static TaskItem Task(string blockLabel, TaskStatus status = TaskStatus.Pending, TaskPriority priority = TaskPriority.Normal)
+            => new() { Title = "Task", BlockLabel = blockLabel, Status = status, Priority = priority };
 
         [Fact]
         public async Task AddTaskAsync_ReturnsTaskWithGeneratedId()
@@ -55,7 +55,7 @@ namespace Cadence.Tests
             using var fresh = new CadenceDbContext(options);
 
             var reloaded = await fresh.Tasks.SingleAsync(t => t.Id == saved.Id);
-            Assert.Equal("Art", reloaded.ContainerLabel);
+            Assert.Equal("Art", reloaded.BlockLabel);
             Assert.Equal(TaskStatus.Pending, reloaded.Status);
         }
 
